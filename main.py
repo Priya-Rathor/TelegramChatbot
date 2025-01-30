@@ -1,87 +1,64 @@
 from dotenv import load_dotenv
 import os
-from aiogram import Bot,Dispatcher,executor,types
+from aiogram import Bot, Dispatcher, executor, types
 import openai
-import sys
 
 load_dotenv()
 
-openai.api_key = os.getenv("OPENAI_API_KAY")
+openai.api_key = os.getenv("OPENAI_API_KEY")  # Fixed typo
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 class Reference:
-    '''
-    A class to store previously  response fro the chatAPI
-    '''
-    def __init__(self) ->None:
-        self.refernce = ""
-
+    """Stores previous chat responses"""
+    def __init__(self):
+        self.reference = ""  # Fixed typo
 
 reference = Reference()
 model_name = "gpt-3.5-turbo"
 
-bot =Bot(token=TELEGRAM_BOT_TOKEN)
+bot = Bot(token=TELEGRAM_BOT_TOKEN)
 dispatcher = Dispatcher(bot)
 
 def clear_past():
-    """
-    A function to  clear the previous conversation  and context.
-    """
-
-    reference.response = ""
+    """Clears past conversation history"""
+    reference.reference = ""
 
 @dispatcher.message_handler(commands=['clear'])
-async def clear(message:types.Message):
-    """
-    A handler to clear the previouse conversation  and  context.
-    """
+async def clear(message: types.Message):
     clear_past()
-    await message.reply("I've cleared the past conversation and  context.")
+    await message.reply("I've cleared the past conversation and context.")
 
 @dispatcher.message_handler(commands=['start'])
-async def welcome(message:types.Message):
-    """
-    This handler receives messages with '/start' or '/help' command
-    """
-
-    await message.reply("Hi\n I am Tele Bot!\ Created by me. How can i assist you ")
-
+async def welcome(message: types.Message):
+    await message.reply("Hi! I am Tele Bot! Created by me. How can I assist you?")
 
 @dispatcher.message_handler(commands=['help'])
-async def helper(message:types.Message)
-    """
-    A handler to display the help menu.
-    """
+async def helper(message: types.Message):
     help_command = """
-     
-    Hi There ,I'm Telegram bot create by  me ! please follow these commands
-    /start - to start the conversation\
-    /clear - to clear the past conversation and  context.
-    /help - to get this help menu.
-    I hope this helps. :)
+    Hi There, I'm a Telegram bot! Here are my commands:
+    /start - Start the conversation
+    /clear - Clear the past conversation and context
+    /help - Show this help menu
     """
-
     await message.reply(help_command)
 
+chat_history = []
 
 @dispatcher.message_handler()
 async def chatgpt(message: types.Message):
-    """
-    A handler to process the  user's input and  generate using the  chatGPT API.
-    """
+    global chat_history
 
-    print(f">>> USER:\n\t{message.text}")
+    chat_history.append({"role": "user", "content": message.text})
+    
     response = openai.ChatCompletion.create(
-        model = model_name,
-        messages = [
-            {"role":"assistant",'content':reference.response},
-            {"role":"user","content":message.text}
-        ]
+        model=model_name,
+        messages=chat_history
     )
-    reference.response = response['choices'][0]['message']['content']
-    print(f">>> chatGPT: \n\t{reference.response}")
-    await bot.send_message(chat_id = message.chat.id,  text =reference.response)
+    
+    bot_response = response['choices'][0]['message']['content']
+    chat_history.append({"role": "assistant", "content": bot_response})
 
+    await bot.send_message(chat_id=message.chat.id, text=bot_response)
 
 if __name__ == "__main__":
-  executor.start_polling(dispatcher,skip_updates = False)
+    executor.start_polling(dispatcher, skip_updates=False)
